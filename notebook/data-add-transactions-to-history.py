@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[97]:
+# In[128]:
 
 
 import glob
@@ -12,7 +12,7 @@ import re
 from forex_python.converter import CurrencyRates
 
 
-# In[98]:
+# In[129]:
 
 
 # Classifier
@@ -26,10 +26,10 @@ import glob
 
 class BankClassify():
 
-    def __init__(self, names=['bofa-sebastian','barclays','dkb-credit','dkb','n26-sebastian','postbank']):
+    def __init__(self, names=['bofa-sebastian','bofa-brett','barclays','dkb-credit','dkb','n26-sebastian','postbank','capital-one']):
         """Load in the previous data (by default from `data`) and initialise the classifier"""
 
-        self.prev_data = pd.concat([read_transaction_data(name) for name in names]).dropna(subset=['label'])
+        self.prev_data = pd.concat([read_transaction_data(name) for name in names]).dropna(subset=['label']).reset_index(drop=True)
 
         self.classifier = NaiveBayesClassifier(self._get_training(self.prev_data), self._extractor)
         
@@ -67,7 +67,7 @@ class BankClassify():
         return re.split(regexp, string)
 
 
-# In[136]:
+# In[145]:
 
 
 def read_transaction_data(source, base_path='../data/transactions/', return_name=False):
@@ -84,9 +84,9 @@ def read_transaction_data(source, base_path='../data/transactions/', return_name
                             'beneficiary': np.object,
                             'currency': np.object,
                             'name': np.object,
-                            'total': np.object,
+                            'total': np.float32,
                             'label': np.object
-                        })
+                        }).sort_values(['transaction_date','description','beneficiary','amount'],ascending=False)
     
     latest_df['source'] = source
     latest_df['fx_rate'] = add_fx_rate(latest_df)
@@ -97,7 +97,7 @@ def read_transaction_data(source, base_path='../data/transactions/', return_name
 
 def add_transaction_data(file, source, base_path='../data/transactions/'):
     historic_files = glob.glob(base_path + f'{source}*.csv')
-    new = pd.read_csv(file, parse_dates=['transaction_date'])
+    new = pd.read_csv(file, parse_dates=['transaction_date']).sort_values(['transaction_date','description','beneficiary','amount'],ascending=False)
     new['label'] = ''
     upload_datetime = datetime.datetime.strftime(datetime.datetime.utcnow(),'%Y-%m-%d-%H-%M')
     
@@ -110,7 +110,7 @@ def add_transaction_data(file, source, base_path='../data/transactions/'):
         if len(new) == 0:
             print(f'Warning: No New Transactions. No Output written for {source}.')
             return 
-        df = pd.concat([df, new])
+        df = pd.concat([new, df])
     
     df.to_csv(base_path + f'{source}-{upload_datetime}.csv', index=False)
     
@@ -165,10 +165,18 @@ def label_data(source):
                     category = input_value
                 
                 df.at[index, 'label'] = category
-                update_label_data(df, source)
+                update_label(df, source)
 
                 # Update classifier
                 bc.classifier.update([(input_text, category)])
+                
+def update_label(df, source, base_path='../data/transactions/'):
+    df_og = read_transaction_data(source)
+    if df.drop('label', axis=1).equals(df_og.drop('label', axis=1)) == True:
+        upload_datetime = datetime.datetime.strftime(datetime.datetime.utcnow(),'%Y-%m-%d-%H-%M')
+        df.to_csv(base_path + f'{source}-{upload_datetime}.csv', index=False)
+    else:
+        raise ValueError('Updating Label Failed! Source and New DataFrame are not comparable.')
                 
 def relabel(row, label, base_path='../data/transactions/', multi=False):
     row = row.reset_index()
@@ -188,76 +196,69 @@ def add_fx_rate(df,t='EUR'):
     return df['currency'].map(unique_fx_rates)
 
 
-# In[178]:
+# In[131]:
 
 
-add_transaction_data('../data/cln/bofa-sebastian.csv', 'bofa-sebastian')
+# add_transaction_data('../data/cln/bofa-sebastian.csv', 'bofa-sebastian')
 add_transaction_data('../data/cln/bofa-brett.csv', 'bofa-brett')
 add_transaction_data('../data/cln/barclays.xlsx', 'barclays')
 add_transaction_data('../data/cln/dkb-credit.csv', 'dkb-credit')
 add_transaction_data('../data/cln/dkb.csv', 'dkb')
-add_transaction_data('../data/cln/n26-csv-sebastian.csv', 'n26-sebastian')
-add_transaction_data('../data/cln/n26-csv-brett.csv', 'n26-brett')
-add_transaction_data('../data/cln/postbank.csv', 'postbank')
+add_transaction_data('../data/cln/n26-sebastian.csv', 'n26-sebastian')
+add_transaction_data('../data/cln/n26-brett.csv', 'n26-brett')
+# add_transaction_data('../data/cln/postbank.csv', 'postbank')
+add_transaction_data('../data/cln/capital-one.csv', 'capital-one')
 
 
-# In[179]:
+# In[156]:
 
 
-# df, name = read_transaction_data('n26-brett', return_name=True)
-# df.drop('total',axis=1).to_csv(name,index=False)
+# label_data('bofa-brett')
+# label_data('barclays')
+# label_data('dkb-credit')
+# label_data('dkb')
+# label_data('n26-sebastian')
+# label_data('n26-brett')
+# label_data('postbank')
+# label_data('capital-one')
 
 
-# In[70]:
+# In[157]:
 
 
-paths = ['../data/cln/bofa-sebastian-historic-data.csv', '../data/cln/barclays-historic-data.xlsx', '../data/cln/dkb-credit-historic-data.csv', '../data/cln/dkb-historic-data.csv', '../data/cln/n26-csv-sebastian.csv', '../data/cln/n26-csv-brett.csv', '../data/cln/postbank-data.csv']
-tables = ['bofa-sebastian','barclays','dkb-credit','dkb','n26-sebastian','n26-brett','postbank']
-for name, path in zip(tables,paths):
-    new = pd.read_csv(path, parse_dates=['transaction_date'])
-    add_column(new, name, col='total')
+df = read_transaction_data('dkb-credit')
+# df.loc[df['label'].isna(),:]
 
 
-# In[148]:
+# In[9]:
 
 
-df = read_transaction_data('n26-brett')
-targets = df.loc[(df['beneficiary'].str.contains('Laura Crimmons')) & (df['amount'] == 20),:]
-targets
+# for idx, row in targets.iterrows():
+#     cond = (targets['transaction_date'] == row['transaction_date']) &\
+#                (targets['amount'] == row['amount']) & \
+#                (targets['description'] == row['description']) & \
+#                (targets['name'] == row['name'])
+#     relabel(targets.loc[cond,:],'fun')
 
 
-# In[149]:
+# In[10]:
 
 
-for idx, row in targets.iterrows():
-    cond = (targets['transaction_date'] == row['transaction_date']) &               (targets['amount'] == row['amount']) &                (targets['description'] == row['description']) &                (targets['name'] == row['name'])
-    relabel(targets.loc[cond,:],'fun')
+# df_cln = read_transaction_data('n26-brett')
+# at_total = ('2021-11-17', 158.58)
+# end_bal = df_cln.loc[df_cln['transaction_date'] > at_total[0],['transaction_date','amount']].sort_values('transaction_date', ascending=True)
+# end_bal['total'] = at_total[1] + end_bal['amount'].shift(0).cumsum()
+# end_bal = end_bal.iat[-1, 2]
+# # end_bal
+
+# df_cln['total'] = end_bal - df_cln['amount'].shift(1).cumsum()
+# df_cln['total'].iat[0] = end_bal
 
 
-# In[154]:
+# In[11]:
 
 
-
-
-
-# In[175]:
-
-
-df_cln = read_transaction_data('n26-brett')
-at_total = ('2021-11-17', 158.58)
-end_bal = df_cln.loc[df_cln['transaction_date'] > at_total[0],['transaction_date','amount']].sort_values('transaction_date', ascending=True)
-end_bal['total'] = at_total[1] + end_bal['amount'].shift(0).cumsum()
-end_bal = end_bal.iat[-1, 2]
-# end_bal
-
-df_cln['total'] = end_bal - df_cln['amount'].shift(1).cumsum()
-df_cln['total'].iat[0] = end_bal
-
-
-# In[176]:
-
-
-df_cln
+# df_cln
 
 
 # In[ ]:
