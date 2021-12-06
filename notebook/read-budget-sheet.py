@@ -28,7 +28,7 @@ f_path = '../data/budget/budget.csv'
 print_file(f_path)
 
 
-# In[6]:
+# In[5]:
 
 
 df = pd.read_csv(f_path, skiprows=7)
@@ -44,4 +44,10 @@ df['budget_month'] = pd.to_datetime(df['budget_month'], format="%b %Y")
 
 df.loc[(df['type'] == 'expense') & (df['budget_value'] > 0),'budget_value'] = -df.loc[(df['type'] == 'expense') & (df['budget_value'] > 0),'budget_value']
 df.to_csv('../data/budget/budget_cln.csv', index=False)
+
+
+# In[ ]:
+
+
+
 
