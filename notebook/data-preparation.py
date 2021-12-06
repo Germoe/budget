@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[392]:
+# In[128]:
 
 
 import numpy as np
@@ -9,7 +9,7 @@ import pandas as pd
 import re
 
 
-# In[440]:
+# In[129]:
 
 
 # TODOs:
@@ -18,7 +18,7 @@ import re
 # Deal with Different Currencies
 
 
-# In[446]:
+# In[130]:
 
 
 def print_file(path, show=10):
@@ -28,6 +28,14 @@ def print_file(path, show=10):
             if i >= show:
                 break
             print(i + 1, line)
+            
+def combine_debit_credit(df, amount_map):
+    plus_vals = df.loc[~df[amount_map['+']].isna(),[mapping['transaction_date'], mapping['description']]]
+    minus_vals = df.loc[~df[amount_map['-']].isna(),[mapping['transaction_date'], mapping['description']]]
+    df[amount_map['-']] = -df[amount_map['-']]
+    if len(plus_vals.index.intersection(minus_vals.index)) == 0:
+        df['amount'] = df[amount_map['+']].combine_first(df[amount_map['-']])
+    return df
             
 def prepare_data(df, at_total=None):
     df_cln = df.loc[:,use_cols]
@@ -76,7 +84,7 @@ def prepare_data(df, at_total=None):
     return df_cln
 
 
-# In[447]:
+# In[131]:
 
 
 # Read in DKB Konto
@@ -98,39 +106,39 @@ use_cols = [col for col in mapping.values()]
 use_names = [name for name in mapping.keys()]
 
 
-# In[448]:
+# In[132]:
 
 
 print_file(f_path)
 
 
-# In[449]:
+# In[133]:
 
 
 df = pd.read_csv(f_path, delimiter=delimiter, skiprows=skiprows, encoding= 'unicode_escape')
 df.head()
 
 
-# In[450]:
+# In[134]:
 
 
 df_cln = prepare_data(df, at_total=at_total)
 df_cln.dtypes
 
 
-# In[451]:
+# In[135]:
 
 
 df_cln.head()
 
 
-# In[452]:
+# In[136]:
 
 
 df_cln.to_csv(f_path.replace('raw','cln'), index=False)
 
 
-# In[456]:
+# In[179]:
 
 
 # Read in DKB Kreditkarte
@@ -140,7 +148,7 @@ delimiter = ';'
 name = 'DKB Credit'
 currency = 'EUR'
 dayfirst = True
-at_total = ('2021-11-21', -219.62)
+at_total = ('2021-12-02', -479.03)
 cent_delimiter = ','
 mapping = {
     'transaction_date': 'Belegdatum',
@@ -151,37 +159,43 @@ use_cols = [col for col in mapping.values()]
 use_names = [name for name in mapping.keys()]
 
 
-# In[457]:
+# In[180]:
 
 
 print_file(f_path)
 
 
-# In[458]:
+# In[181]:
 
 
 df = pd.read_csv(f_path, delimiter=delimiter, skiprows=skiprows, encoding= 'unicode_escape')
 df.head()
 
 
-# In[459]:
+# In[182]:
 
 
 df_cln = prepare_data(df, at_total=at_total)
 df_cln.dtypes
 
 
-# In[460]:
+# In[183]:
+
+
+df_cln.head()
+
+
+# In[184]:
 
 
 df_cln.to_csv(f_path.replace('raw','cln'), index=False)
 
 
-# In[461]:
+# In[148]:
 
 
 # Read in N26
-f_path = "../data/raw/n26-csv-sebastian.csv"
+f_path = "../data/raw/n26-sebastian.csv"
 skiprows = 0
 delimiter = ','
 name = 'N26 Sebastian'
@@ -199,43 +213,43 @@ use_cols = [col for col in mapping.values()]
 use_names = [name for name in mapping.keys()]
 
 
-# In[462]:
+# In[149]:
 
 
 print_file(f_path)
 
 
-# In[463]:
+# In[150]:
 
 
 df = pd.read_csv(f_path, delimiter=delimiter, skiprows=skiprows, encoding= 'unicode_escape')
 df.tail()
 
 
-# In[464]:
+# In[151]:
 
 
 df_cln = prepare_data(df, at_total=at_total)
 df_cln.dtypes
 
 
-# In[465]:
+# In[152]:
 
 
-df_cln
+df_cln.head()
 
 
-# In[466]:
+# In[153]:
 
 
 df_cln.to_csv(f_path.replace('raw','cln'), index=False)
 
 
-# In[471]:
+# In[154]:
 
 
 # Read in N26
-f_path = "../data/raw/n26-csv-brett.csv"
+f_path = "../data/raw/n26-brett.csv"
 skiprows = 0
 delimiter = ','
 name = 'N26 Brett'
@@ -253,38 +267,44 @@ use_cols = [col for col in mapping.values()]
 use_names = [name for name in mapping.keys()]
 
 
-# In[472]:
+# In[155]:
 
 
 print_file(f_path)
 
 
-# In[473]:
+# In[156]:
 
 
 df = pd.read_csv(f_path, delimiter=delimiter, skiprows=skiprows, encoding= 'unicode_escape')
 df.tail(50)
 
 
-# In[474]:
+# In[157]:
 
 
 df_cln = prepare_data(df, at_total=at_total)
 df_cln.dtypes
 
 
-# In[475]:
+# In[158]:
+
+
+df_cln.head()
+
+
+# In[159]:
 
 
 df_cln.to_csv(f_path.replace('raw','cln'), index=False)
 
 
-# In[481]:
+# In[29]:
 
 
 # Read in Postbank
 f_path = "../data/raw/postbank.csv"
-skiprows = 13
+skiprows = 9
 delimiter = ';'
 name = 'Postbank'
 currency = 'EUR'
@@ -301,13 +321,13 @@ use_cols = [col for col in mapping.values()]
 use_names = [name for name in mapping.keys()]
 
 
-# In[482]:
+# In[30]:
 
 
 print_file(f_path, show=15)
 
 
-# In[483]:
+# In[31]:
 
 
 df = pd.read_csv(f_path, delimiter=delimiter, skiprows=skiprows, encoding='unicode_escape')
@@ -315,20 +335,20 @@ df.columns = [re.match(r'(([A-Z]|[a-z])+)',col).group() for col in df.columns]
 df.head()
 
 
-# In[484]:
+# In[32]:
 
 
 df_cln = prepare_data(df, at_total=at_total)
 df_cln.dtypes
 
 
-# In[485]:
+# In[33]:
 
 
 df_cln.to_csv(f_path.replace('raw','cln'), index=False)
 
 
-# In[414]:
+# In[34]:
 
 
 # Read in Bank Of America
@@ -349,13 +369,13 @@ use_cols = [col for col in mapping.values()]
 use_names = [name for name in mapping.keys()]
 
 
-# In[415]:
+# In[35]:
 
 
 print_file(f_path)
 
 
-# In[416]:
+# In[36]:
 
 
 df = pd.read_csv(f_path, delimiter=delimiter, skiprows=skiprows, encoding= 'unicode_escape')
@@ -381,7 +401,7 @@ df_cln.dtypes
 df_cln.to_csv(f_path.replace('raw','cln'), index=False)
 
 
-# In[423]:
+# In[160]:
 
 
 # Read in Bank Of America
@@ -402,39 +422,45 @@ use_cols = [col for col in mapping.values()]
 use_names = [name for name in mapping.keys()]
 
 
-# In[424]:
+# In[161]:
 
 
 print_file(f_path)
 
 
-# In[425]:
+# In[162]:
 
 
 df = pd.read_csv(f_path, delimiter=delimiter, skiprows=skiprows, encoding= 'unicode_escape')
 df.head()
 
 
-# In[426]:
+# In[163]:
 
 
 df = df.iloc[1:,:]
 
 
-# In[427]:
+# In[164]:
 
 
 df_cln = prepare_data(df, at_total=at_total)
 df_cln.dtypes
 
 
-# In[428]:
+# In[165]:
+
+
+df_cln.head()
+
+
+# In[166]:
 
 
 df_cln.to_csv(f_path.replace('raw','cln'), index=False)
 
 
-# In[429]:
+# In[167]:
 
 
 # Read in Barclays
@@ -454,30 +480,97 @@ use_cols = [col for col in mapping.values()]
 use_names = [name for name in mapping.keys()]
 
 
-# In[430]:
+# In[168]:
 
 
 df = pd.read_excel(f_path, sheet_name=sheet_name, skiprows=12, engine="openpyxl")
 df.head()
 
 
-# In[431]:
+# In[169]:
 
 
 df_cln = prepare_data(df, at_total=at_total)
 df_cln.dtypes
 
 
-# In[432]:
+# In[170]:
+
+
+df_cln.head()
+
+
+# In[171]:
 
 
 df_cln.to_csv(f_path.replace('raw','cln'), index=False)
 
 
-# In[ ]:
+# In[172]:
 
 
-df_cln
+# Read in Capital One Konto
+f_path = "../data/raw/capital-one.csv"
+skiprows = 0
+delimiter = ','
+name = 'capital-one'
+currency = 'USD'
+cent_delimiter = '.'
+dayfirst = False
+at_total = ('2021-11-28', -617.63)
+mapping = {
+    'transaction_date': 'Transaction Date',
+    'description': 'Description'
+}
+use_cols = [col for col in mapping.values()]
+use_names = [name for name in mapping.keys()]
+
+amount_map = {
+    '+': 'Credit',
+    '-': 'Debit'
+}
+if len(amount_map) > 0:
+    use_cols = use_cols + ['amount']
+    use_names = use_names + ['amount']
+
+
+# In[173]:
+
+
+print_file(f_path)
+
+
+# In[174]:
+
+
+df = pd.read_csv(f_path, delimiter=delimiter, skiprows=skiprows, encoding= 'unicode_escape')
+df.head()
+
+
+# In[175]:
+
+
+if len(amount_map) > 0:
+    df = combine_debit_credit(df, amount_map)
+
+
+# In[176]:
+
+
+df_cln = prepare_data(df, at_total=at_total)
+df_cln.dtypes
+
+
+# In[177]:
+
+
+df_cln.head()
+
+
+# In[178]:
+
+
+df_cln.to_csv(f_path.replace('raw','cln'), index=False)
 
 
 # In[ ]:
