@@ -62,8 +62,8 @@ df_last_month = df_raw[df_raw['budget_month'] == last_month_str].sort_index()
 df_last_month_cat = df_last_month.groupby(['budget_month','cat']).sum()['amount']
 
 df_last_month_cat = budget_last_month.join(df_last_month_cat).reset_index()
-df_last_month_cat['diff'] = df_last_month_cat['amount'] - df_last_month_cat['budget_value']
-diff_last_month_pivot = df_last_month_cat.pivot_table(index=['budget_month','cat'], columns=['type'], values=['amount','budget_value','diff'])
+df_last_month_cat['diff'] = df_last_month_cat['amount'] - df_last_month_cat['budget_amount']
+diff_last_month_pivot = df_last_month_cat.pivot_table(index=['budget_month','cat'], columns=['type'], values=['amount','budget_amount','diff'])
 diff_last_month_pivot
 
 
@@ -103,3 +103,5 @@ roll_avg = df_raw.reset_index().groupby('transaction_date').agg({'total': np.ave
 roll_avg['rolling_mean'] = roll_avg['total'].rolling(window=28).mean()
 roll_avg.plot()
 
+
+# %%
