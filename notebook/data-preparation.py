@@ -4,9 +4,9 @@
 # In[128]:
 
 
-import numpy as np
 import pandas as pd
 import re
+from budget.functions import print_file, combine_debit_credit, prepare_data
 
 
 # In[129]:
@@ -19,69 +19,6 @@ import re
 
 
 # In[130]:
-
-
-def print_file(path, show=10):
-    with open(path, "r", encoding='utf-8', errors="ignore") as file:
-        lines = file.readlines()
-        for i, line in enumerate(lines):
-            if i >= show:
-                break
-            print(i + 1, line)
-            
-def combine_debit_credit(df, amount_map):
-    plus_vals = df.loc[~df[amount_map['+']].isna(),[mapping['transaction_date'], mapping['description']]]
-    minus_vals = df.loc[~df[amount_map['-']].isna(),[mapping['transaction_date'], mapping['description']]]
-    df[amount_map['-']] = -df[amount_map['-']]
-    if len(plus_vals.index.intersection(minus_vals.index)) == 0:
-        df['amount'] = df[amount_map['+']].combine_first(df[amount_map['-']])
-    return df
-            
-def prepare_data(df, at_total=None):
-    df_cln = df.loc[:,use_cols]
-    df_cln.columns = use_names    
-
-    # Define mandatory cols
-    mandatory_cols = ['transaction_date','beneficiary','amount','description']
-    for man_col in mandatory_cols:
-        if man_col not in df_cln.columns:
-            df_cln[man_col] = ''
-    
-    # Add Known Information
-    df_cln['currency'] = currency
-    df_cln['name'] = name
-
-    # Date Column
-    df_cln['transaction_date'] = pd.to_datetime(df_cln['transaction_date'], dayfirst=dayfirst)
-            
-    # Sort Values
-    df_cln = df_cln.sort_values('transaction_date', ascending=False)
-
-    # Value Column
-    if df_cln['amount'].dtype == 'O':
-        df_cln['amount'] = df_cln['amount'].str.extract(r'((\d|\.|,|-)+)')[0]
-        if cent_delimiter == ',':
-            df_cln['amount'] = pd.to_numeric(df_cln['amount'].str.replace('.','').str.replace(',','.'), downcast='float')
-        else:
-            df_cln['amount'] = pd.to_numeric(df_cln['amount'].str.replace(',',''), downcast='float')
-
-    # Fill NaN Values 
-    df_cln['description'] = df_cln['description'].fillna('other')
-    
-    # Add total_at
-    if at_total is not None:
-        # Calculate Beginning Balance
-        if (df_cln['transaction_date'] > at_total[0]).sum() > 0:
-            end_bal = df_cln.loc[df_cln['transaction_date'] > at_total[0],['transaction_date','amount']].sort_values('transaction_date', ascending=True)
-            end_bal['total'] = at_total[1] + end_bal['amount'].shift(0).cumsum()
-            end_bal = end_bal.iat[-1, 2]
-        else:
-            end_bal = at_total[1]
-        
-        df_cln['total'] = end_bal - df_cln['amount'].shift(1).cumsum()
-        df_cln['total'].iat[0] = end_bal
-
-    return df_cln
 
 
 # In[131]:
@@ -102,8 +39,6 @@ mapping = {
     'amount': 'Betrag (EUR)',
     'description': 'Verwendungszweck'
 }
-use_cols = [col for col in mapping.values()]
-use_names = [name for name in mapping.keys()]
 
 
 # In[132]:
@@ -122,7 +57,7 @@ df.head()
 # In[134]:
 
 
-df_cln = prepare_data(df, at_total=at_total)
+df_cln = prepare_data(df, mapping, dayfirst=dayfirst, currency=currency, name=name, cent_delimiter=cent_delimiter, at_total=at_total)
 df_cln.dtypes
 
 
@@ -155,8 +90,6 @@ mapping = {
     'amount': 'Betrag (EUR)',
     'description': 'Beschreibung'
 }
-use_cols = [col for col in mapping.values()]
-use_names = [name for name in mapping.keys()]
 
 
 # In[180]:
@@ -175,7 +108,7 @@ df.head()
 # In[182]:
 
 
-df_cln = prepare_data(df, at_total=at_total)
+df_cln = prepare_data(df, mapping, dayfirst=dayfirst, currency=currency, name=name, cent_delimiter=cent_delimiter, at_total=at_total)
 df_cln.dtypes
 
 
@@ -209,8 +142,6 @@ mapping = {
     'amount': 'Amount (EUR)',
     'description': 'Payment reference'
 }
-use_cols = [col for col in mapping.values()]
-use_names = [name for name in mapping.keys()]
 
 
 # In[149]:
@@ -229,7 +160,7 @@ df.tail()
 # In[151]:
 
 
-df_cln = prepare_data(df, at_total=at_total)
+df_cln = prepare_data(df, mapping, dayfirst=dayfirst, currency=currency, name=name, cent_delimiter=cent_delimiter, at_total=at_total)
 df_cln.dtypes
 
 
@@ -263,8 +194,6 @@ mapping = {
     'amount': 'Amount (EUR)',
     'description': 'Payment reference'
 }
-use_cols = [col for col in mapping.values()]
-use_names = [name for name in mapping.keys()]
 
 
 # In[155]:
@@ -283,7 +212,7 @@ df.tail(50)
 # In[157]:
 
 
-df_cln = prepare_data(df, at_total=at_total)
+df_cln = prepare_data(df, mapping, dayfirst=dayfirst, currency=currency, name=name, cent_delimiter=cent_delimiter, at_total=at_total)
 df_cln.dtypes
 
 
@@ -317,8 +246,6 @@ mapping = {
     'amount': 'Betrag',
     'description': 'Buchungsdetails'
 }
-use_cols = [col for col in mapping.values()]
-use_names = [name for name in mapping.keys()]
 
 
 # In[30]:
@@ -338,7 +265,7 @@ df.head()
 # In[32]:
 
 
-df_cln = prepare_data(df, at_total=at_total)
+df_cln = prepare_data(df, mapping, dayfirst=dayfirst, currency=currency, name=name, cent_delimiter=cent_delimiter, at_total=at_total)
 df_cln.dtypes
 
 
@@ -365,8 +292,6 @@ mapping = {
     'amount': 'Amount',
     'description': 'Description'
 }
-use_cols = [col for col in mapping.values()]
-use_names = [name for name in mapping.keys()]
 
 
 # In[35]:
@@ -391,7 +316,7 @@ df = df.iloc[1:,:]
 # In[418]:
 
 
-df_cln = prepare_data(df, at_total=at_total)
+df_cln = prepare_data(df, mapping, dayfirst=dayfirst, currency=currency, name=name, cent_delimiter=cent_delimiter, at_total=at_total)
 df_cln.dtypes
 
 
@@ -418,8 +343,6 @@ mapping = {
     'amount': 'Amount',
     'description': 'Description'
 }
-use_cols = [col for col in mapping.values()]
-use_names = [name for name in mapping.keys()]
 
 
 # In[161]:
@@ -444,7 +367,7 @@ df = df.iloc[1:,:]
 # In[164]:
 
 
-df_cln = prepare_data(df, at_total=at_total)
+df_cln = prepare_data(df, mapping, dayfirst=dayfirst, currency=currency, name=name, cent_delimiter=cent_delimiter, at_total=at_total)
 df_cln.dtypes
 
 
@@ -476,8 +399,6 @@ mapping = {
     'amount': 'Betrag',
     'description': 'Beschreibung'
 }
-use_cols = [col for col in mapping.values()]
-use_names = [name for name in mapping.keys()]
 
 
 # In[168]:
@@ -490,7 +411,7 @@ df.head()
 # In[169]:
 
 
-df_cln = prepare_data(df, at_total=at_total)
+df_cln = prepare_data(df, mapping, dayfirst=dayfirst, currency=currency, name=name, cent_delimiter=cent_delimiter, at_total=at_total)
 df_cln.dtypes
 
 
@@ -551,13 +472,13 @@ df.head()
 
 
 if len(amount_map) > 0:
-    df = combine_debit_credit(df, amount_map)
+    df = combine_debit_credit(df, amount_map, mapping)
 
 
 # In[176]:
 
 
-df_cln = prepare_data(df, at_total=at_total)
+df_cln = prepare_data(df, mapping, dayfirst=dayfirst, currency=currency, name=name, cent_delimiter=cent_delimiter, at_total=at_total)
 df_cln.dtypes
 
 
@@ -578,3 +499,5 @@ df_cln.to_csv(f_path.replace('raw','cln'), index=False)
 
 
 
+
+# %%

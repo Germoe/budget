@@ -3,17 +3,8 @@
 
 # In[1]:
 
-
-import numpy as np
 import pandas as pd
-
-def print_file(path, show=10):
-    with open(path, "r", encoding='utf-8', errors="ignore") as file:
-        lines = file.readlines()
-        for i, line in enumerate(lines):
-            if i >= show:
-                break
-            print(i + 1, line)
+from budget.functions import print_file
 
 
 # In[2]:
@@ -51,3 +42,5 @@ df.to_csv('../data/budget/budget_cln.csv', index=False)
 
 
 
+
+# %%
