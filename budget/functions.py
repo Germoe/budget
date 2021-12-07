@@ -75,7 +75,7 @@ def combine_debit_credit(df, amount_map, mapping):
     if len(plus_vals.index.intersection(minus_vals.index)) == 0:
         df['amount'] = df[amount_map['+']].combine_first(df[amount_map['-']])
     return df
-            
+
 def prepare_data(df, mapping, dayfirst, currency, name, cent_delimiter, at_total=None):
     use_cols = [col for col in mapping.values()]
     use_names = [name for name in mapping.keys()]
@@ -220,7 +220,7 @@ def add_transaction_data(file, source, base_path='../data/transactions/'):
         df = pd.concat([new, df])
     
     df.to_csv(base_path + f'{source}-{upload_datetime}.csv', index=False)
-    
+
 def add_column(new, source, col, base_path='../data/transactions/', force=False):
     df = read_transaction_data(source)
     
@@ -239,7 +239,7 @@ def add_column(new, source, col, base_path='../data/transactions/', force=False)
         df[new_col] = new[new_col]
         
     df.to_csv(base_path + f'{source}-{upload_datetime}.csv', index=False)
-    
+
 def label_data(source):
     df = read_transaction_data(source)
     no_label = df.loc[df['label'].isna(),:]
@@ -276,7 +276,7 @@ def label_data(source):
 
                 # Update classifier
                 bc.classifier.update([(input_text, category)])
-                
+
 def update_label(df, source, base_path='../data/transactions/'):
     df_og = read_transaction_data(source)
     if df.drop('label', axis=1).equals(df_og.drop('label', axis=1)) == True:
@@ -284,7 +284,7 @@ def update_label(df, source, base_path='../data/transactions/'):
         df.to_csv(base_path + f'{source}-{upload_datetime}.csv', index=False)
     else:
         raise ValueError('Updating Label Failed! Source and New DataFrame are not comparable.')
-                
+
 def relabel(row, label, base_path='../data/transactions/', multi=False):
     row = row.reset_index()
     transaction_date, amount, description, name, source = row[['transaction_date', 'amount', 'description', 'name','source']].values[0]
@@ -296,7 +296,7 @@ def relabel(row, label, base_path='../data/transactions/', multi=False):
     upload_datetime = datetime.datetime.strftime(datetime.datetime.utcnow(),'%Y-%m-%d-%H-%M')
     
     df_new.to_csv(base_path + f'{source}-{upload_datetime}.csv', index=False)
-    
+
 def add_fx_rate(df,t='EUR'):
     c = CurrencyRates()
     unique_fx_rates = {curr: c.get_rate(curr, 'EUR') for curr in df['currency'].unique()}
