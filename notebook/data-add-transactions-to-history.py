@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
+# %%
 
-# In[128]:
+# %%
 
 from budget.functions import add_transaction_data, read_transaction_data
 
-# In[131]:
+# %%
 
 
 # add_transaction_data('../data/cln/bofa-sebastian.csv', 'bofa-sebastian')
@@ -19,7 +20,7 @@ add_transaction_data('../data/cln/n26-brett.csv', 'n26-brett')
 add_transaction_data('../data/cln/capital-one.csv', 'capital-one')
 
 
-# In[156]:
+# %%
 
 
 # label_data('bofa-brett')
@@ -32,14 +33,14 @@ add_transaction_data('../data/cln/capital-one.csv', 'capital-one')
 # label_data('capital-one')
 
 
-# In[157]:
+# %%
 
 
 df = read_transaction_data('dkb-credit')
 # df.loc[df['label'].isna(),:]
 
 
-# In[9]:
+# %%
 
 
 # for idx, row in targets.iterrows():
@@ -50,7 +51,7 @@ df = read_transaction_data('dkb-credit')
 #     relabel(targets.loc[cond,:],'fun')
 
 
-# In[10]:
+# %%
 
 
 # df_cln = read_transaction_data('n26-brett')
@@ -64,13 +65,13 @@ df = read_transaction_data('dkb-credit')
 # df_cln['total'].iat[0] = end_bal
 
 
-# In[11]:
+# %%
 
 
 # df_cln
 
 
-# In[ ]:
+# %%
 
 
 
