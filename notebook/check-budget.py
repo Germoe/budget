@@ -106,18 +106,25 @@ bank_configs = {
 class Transaction():
     latest_historic_file = None
     base_path='../data/transactions/'
+    source = None
     transactions=None
     
-    def __init__(self):
+    def __init__(self, source):
+        self.source = source
         pass
     
     def add_transactions(self, f_path, name, at_total, config):
         if config not in bank_configs:
             raise ValueError(f'Not Existing Configuration: {config}')
+            
         df = self._prepare_transactions(f_path, name, at_total, bank_configs[config])
         self.transactions = self.merge_with_existing_data(df, name)
-    
+        if self.transactions is None:
+            print(f'Reading in from: {name}')
+            self.transactions = self.read_transaction_data(name)
+            
     def read_transaction_data(self, source):
+        self.source = source
         historic_files = glob.glob(self.base_path + f'{source}-20*.csv')
 
         if len(historic_files) == 0:
@@ -152,14 +159,15 @@ class Transaction():
             df = self.read_transaction_data(source)
             latest_transaction = df['transaction_date'].max()
             # TODO Improve merge procedure to avoid missing data
-            new = new.loc[new['transaction_date'] > latest_transaction,:]
+            df = df.loc[df['transaction_date'] < latest_transaction,:].copy(deep=True)
+            new = new.loc[new['transaction_date'] >= latest_transaction,:]
             df_new = pd.concat([new, df])
             if df_new.equals(df):
                 print(f'Warning: No new transactions added. No Output written for {source}.')
-                return
+                return None
             elif len(df_new) <= len(df):
                 print(f'Warning: Data has changed but new output is shorter or of equal length. No Output written for {source}.')
-                return
+                return None
 
         df_new.to_csv(self.base_path + f'{source}-{upload_datetime}.csv', index=False)
         return df_new
@@ -189,28 +197,45 @@ class Transaction():
                               cent_delimiter=json_config['cent_delimiter'], 
                               at_total=at_total)
         return df
+    
+    
+    def update_total(self,at_total):
+        # Add total_at
+        upload_datetime = datetime.datetime.strftime(datetime.datetime.utcnow(),'%Y-%m-%d-%H-%M')
         
+        # Calculate Beginning Balance
+        df_cln = self.transactions
+        
+        if (df_cln['transaction_date'] > at_total[0]).sum() > 0:
+            end_bal = df_cln.loc[df_cln['transaction_date'] > at_total[0],['transaction_date','amount']].sort_values('transaction_date', ascending=True)
+            end_bal['total'] = at_total[1] + end_bal['amount'].shift(0).cumsum()
+            end_bal = end_bal.iat[-1, 2]
+        else:
+            end_bal = at_total[1]
+
+        df_cln['total'] = end_bal - df_cln['amount'].shift(1).cumsum()
+        df_cln['total'].iat[0] = end_bal
+        
+        self.transactions = df_cln
+        self.transactions.to_csv(self.base_path + f'{self.source}-{upload_datetime}.csv', index=False)
 
 
-# -
 
-t = Transaction()
-t.add_transactions(dkb_path, dkb_name, dkb_at_total, dkb_config)
 
 # +
 dkb_path = "../data/raw/dkb.csv"
 dkb_name = "dkb"
-dkb_at_total = ('2021-11-21', 554.26)
+dkb_at_total = ('2022-03-04', 2994.55)
 dkb_config = 'dkb'
 
 dkb_credit_path = "../data/raw/dkb-credit.csv"
 dkb_credit_name = "dkb-credit"
-dkb_credit_at_total = ('2021-12-02', -479.03)
+dkb_credit_at_total = ('2022-04-01', -126.12)
 dkb_credit_config = 'dkb-credit'
 
 n26_sebastian_path = "../data/raw/n26-sebastian.csv"
 n26_sebastian_name = 'n26-sebastian'
-n26_sebastian_at_total = ('2021-11-21', 23.02)
+n26_sebastian_at_total = ('2022-04-04', 142.36)
 n26_sebastian_config = 'n26'
 
 n26_brett_path = "../data/raw/n26-brett.csv"
@@ -230,7 +255,7 @@ bofa_brett_config = 'bofa'
 
 barclays_path = "../data/raw/barclays.xlsx"
 barclays_name = 'barclays'
-barclays_at_total = ('2021-11-17', -5746.52)
+barclays_at_total = ('2022-04-01', -1067.92)
 barclays_config = 'barclays'
 
 capital_one_path = "../data/raw/capital-one.csv"
@@ -239,52 +264,62 @@ capital_one_at_total = ('2021-11-28', -617.63)
 capital_one_config = 'capital-one'
 # -
 
-transactions = Transaction()
+transactions = Transaction(dkb_name)
 transactions.add_transactions(f_path=dkb_path,
 name=dkb_name,
 at_total=dkb_at_total,
 config=dkb_config)
+transactions.update_total(dkb_at_total)
 
-transactions = Transaction()
+transactions = Transaction(dkb_credit_name)
 transactions.add_transactions(f_path=dkb_credit_path,
 name=dkb_credit_name,
 at_total=dkb_credit_at_total,
 config=dkb_credit_config)
+transactions.update_total(dkb_credit_at_total)
 
-transactions = Transaction()
+transactions = Transaction(n26_sebastian_name)
 transactions.add_transactions(f_path=n26_sebastian_path,
 name=n26_sebastian_name,
 at_total=n26_sebastian_at_total,
 config=n26_sebastian_config)
+transactions.update_total(n26_sebastian_at_total)
 
-transactions = Transaction()
+transactions = Transaction(n26_brett_name)
 transactions.add_transactions(f_path=n26_brett_path,
 name=n26_brett_name,
 at_total=n26_brett_at_total,
 config=n26_brett_config)
+transactions.update_total(n26_brett_at_total)
 
-transactions = Transaction()
+transactions = Transaction(bofa_sebastian_name)
 transactions.add_transactions(f_path=bofa_sebastian_path,
-name=bofa_sebastian_name,
-at_total=bofa_sebastian_at_total,
-config=bofa_sebastian_config)
+                            name=bofa_sebastian_name,
+                            at_total=bofa_sebastian_at_total,
+                            config=bofa_sebastian_config)
+transactions.update_total(bofa_sebastian_at_total)
 
-transactions = Transaction()
+transactions = Transaction(bofa_brett_name)
 transactions.add_transactions(f_path=bofa_brett_path,
 name=bofa_brett_name,
 at_total=bofa_brett_at_total,
 config=bofa_brett_config)
+transactions.update_total(bofa_brett_at_total)
 
-transactions = Transaction()
+transactions = Transaction(barclays_name)
 transactions.add_transactions(f_path=barclays_path,
 name=barclays_name,
 at_total=barclays_at_total,
 config=barclays_config)
+transactions.update_total(barclays_at_total)
 
-transactions = Transaction()
+transactions = Transaction(capital_one_name)
 transactions.add_transactions(f_path=capital_one_path,
 name=capital_one_name,
 at_total=capital_one_at_total,
 config=capital_one_config)
+transactions.update_total(capital_one_at_total)
+
+
 
 

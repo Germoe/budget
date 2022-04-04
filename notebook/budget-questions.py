@@ -5,7 +5,10 @@ import numpy as np
 import pandas as pd
 from ipywidgets import interact, widgets
 import datetime
-from budget.functions import add_categories, read_transaction_data
+from budget.functions import add_categories, get_categories, read_transaction_data
+from budget.budget import Budget
+
+import plotly.graph_objects as go
 
 pd.options.plotting.backend = "plotly"
 
@@ -25,7 +28,7 @@ def filter_last_month(lower_bound=None, upper_bound=None):
         return df
 
 def show_last_month_cat_budget(cat):
-    df = budget_last_month.reset_index()
+    df = budget_last_month_cat.reset_index()
     return df.loc[(df['cat'] == cat),:]
 
 
@@ -42,10 +45,12 @@ last_month_str = last_month.strftime("%Y-%m-%d")
 
 # %%
 # Budget Plan
-budget = pd.read_csv('../data/budget/budget_cln.csv', parse_dates=['budget_month'])
-budget, cats = add_categories(budget, return_cats = True)
-budget_last_month = budget.loc[budget['budget_month'] == last_month_str,:].groupby(['budget_month','type','cat','label']).sum()
-budget_last_month_cat = budget.loc[budget['budget_month'] == last_month_str,:].groupby(['budget_month','type','cat']).sum()
+budget = Budget('../data/budget/budget_new.csv').budget
+budget = budget#.reset_index().rename({'index': 'cat'},axis=1)
+budget.index.name = 'cat'
+# budget, cats = add_categories(budget, return_cats = True)
+# budget_last_month = budget.loc[budget['budget_month'] == last_month_str,:].groupby(['budget_month','type','cat','label']).sum()
+budget_last_month_cat = budget# budget.loc[budget['budget_month'] == last_month_str,:].groupby(['budget_month','type','cat']).sum()
 
 # Actuals
 names = ['bofa-sebastian','bofa-brett','barclays','dkb-credit','dkb','n26-sebastian','n26-brett','capital-one']
@@ -59,18 +64,29 @@ df_raw['budget_month'] = df_raw.index.to_numpy().astype('datetime64[M]')
 
 ## Last Month Actuals
 df_last_month = df_raw[df_raw['budget_month'] == last_month_str].sort_index()
-df_last_month_cat = df_last_month.groupby(['budget_month','cat']).sum()['amount']
+df_last_month_cat = df_last_month.groupby(['cat']).sum()[['amount']]
 
-df_last_month_cat = budget_last_month.join(df_last_month_cat).reset_index()
+df_last_month_cat = budget_last_month_cat.join(df_last_month_cat).reset_index()
 df_last_month_cat['diff'] = df_last_month_cat['amount'] - df_last_month_cat['budget_amount']
-diff_last_month_pivot = df_last_month_cat.pivot_table(index=['budget_month','cat'], columns=['type'], values=['amount','budget_amount','diff'])
+diff_last_month_pivot = df_last_month_cat.pivot_table(index=['cat'], values=['amount','budget_amount','diff'], aggfunc='sum')
 diff_last_month_pivot
 
 
 # %%
-# Show Budget Category Breakdowns 
-interact(show_last_month_cat_budget, cat=list(cats.keys()));
+excl_income = ~(diff_last_month_pivot.index == 'income')
+total_expenses = diff_last_month_pivot.loc[excl_income,'amount'].sum()
+print(f'Total Expenses: {total_expenses} EUR')
 
+# %%
+diff_last_month_pivot[['diff']].plot(kind='bar')
+
+# %%
+df_raw.loc[(df_raw['cat'].isna()) & (df_raw.index >= last_month_str),'label'].unique()
+
+# %%
+# Show Actual Category Breakdowns 
+cats = get_categories()
+interact(show_last_month_cat_budget, cat=list(cats.keys()));
 
 # %%
 # Show Actual Category Breakdowns 
@@ -89,8 +105,11 @@ interact(filter_last_month,
 
 
 # %%
-last_month_total = diff_last_month_pivot.loc[:,('amount',slice(None))].droplevel(0, axis=1).fillna(0)
-last_month_total['savings/debt'] = last_month_total['income'] + last_month_total['expense']
+diff_last_month_pivot.sum()
+
+# %%
+last_month_total = diff_last_month_pivot.loc[:,['amount']].fillna(0)
+last_month_total['diff_to_budget'] = diff_last_month_pivot.loc[:,'diff']
 last_month_total.sum()
 
 
@@ -99,9 +118,56 @@ last_month_total.sum()
 
 
 # %%
-roll_avg = df_raw.reset_index().groupby('transaction_date').agg({'total': np.average})
-roll_avg['rolling_mean'] = roll_avg['total'].rolling(window=28).mean()
-roll_avg.plot()
+df_raw = df_raw.reset_index()
+last_transact_date = df_raw.groupby('source').max()['transaction_date'].reset_index()
+last_transact_cond = df_raw[['source','transaction_date']].apply(tuple, axis=1).isin(last_transact_date.apply(tuple, axis=1))
 
+# %%
+df_raw.groupby(['transaction_date','source']).sum()
+
+# %%
+total_source_df = df_raw.loc[(last_transact_cond)]
+total_source_df = total_source_df.groupby('source').agg({'total': [np.max,np.min,np.mean]})
+total_source_df, total_source_df.sum()
+
+# %%
+roll_avg = df_raw.groupby(['source','transaction_date']).agg({'total': [np.max, np.min, np.mean]})
+start = df_raw.transaction_date.min()
+end = df_raw.transaction_date.max()
+time_index = pd.date_range(start=start, end=end)
+roll_avg = pd.concat([roll_avg.loc[(source, slice(None)),:].reset_index().set_index('transaction_date').reindex(time_index, method='ffill') for source in df_raw['source'].unique()]).reset_index()
+roll_avg = roll_avg.groupby('index').sum()
+roll_avg['rolling_mean_max'] = roll_avg[('total','amax')].rolling(window=28).mean()
+roll_avg['rolling_mean_min'] = roll_avg[('total','amin')].rolling(window=28).mean()
+roll_avg['rolling_mean_mean'] = roll_avg[('total','mean')].rolling(window=28).mean()
+roll_avg.columns = [f'{i}{j}' for i, j in roll_avg.columns]
+
+fig = go.Figure()
+fig.add_traces([go.Scatter(x=roll_avg.index,y=roll_avg['totalamax'], line={'color': 'rgba(0,0,0,0)'}, showlegend=False),
+                go.Scatter(x=roll_avg.index,y=roll_avg['totalamin'], mode='none', fillcolor='rgba(31,119,180,.2)', fill='tonexty', name='min-to-max-daily_avg')])
+fig.add_traces([go.Scatter(x=roll_avg.index,y=roll_avg['rolling_mean_max'], line={'color': 'rgba(0,0,0,0)'}, showlegend=False),
+                go.Scatter(x=roll_avg.index,y=roll_avg['rolling_mean_min'], mode='none', fillcolor='rgba(255,127,14,.2)', fill='tonexty', name='min-to-max-mvg_28')])
+fig.add_traces([go.Scatter(x=roll_avg.index,y=roll_avg['totalmean'], line={'color': 'rgba(31,119,180,1)'}, name='daily_avg'),
+                go.Scatter(x=roll_avg.index,y=roll_avg['rolling_mean_mean'], line={'color': 'rgba(255,127,14,1)'}, name='mvg_28')])
+
+# %%
+df_expenses = df_raw.loc[~df_raw['cat'].isin(['income','transfer','ignore']),:]
+
+# %%
+roll_avg = df_expenses.groupby(['transaction_date']).agg({'amount': [np.sum]})
+start = df_expenses.transaction_date.min()
+end = df_expenses.transaction_date.max()
+time_index = pd.date_range(start=start, end=end)
+roll_avg = roll_avg.reindex(time_index).reset_index()
+roll_avg = roll_avg.groupby('index').sum()
+roll_avg['weekly_avg'] = roll_avg[('amount','sum')].rolling(window=7).sum()
+roll_avg['monthly_avg'] = roll_avg[('amount','sum')].rolling(window=28).sum()
+roll_avg['three_month_avg'] = roll_avg[('amount','sum')].rolling(window=84).sum() / 3
+roll_avg.columns = [f'{i}{j}' for i, j in roll_avg.columns]
+
+fig = go.Figure()
+fig.add_traces([go.Scatter(x=roll_avg.index,y=roll_avg['weekly_avg'], line={'color': 'rgba(148,103,189,1)'}, name='weekly_avg'),
+               go.Scatter(x=roll_avg.index,y=roll_avg['monthly_avg'], line={'color': 'rgba(31,119,180,1)'}, name='monthly_avg'),
+               go.Scatter(x=roll_avg.index,y=roll_avg['three_month_avg'], line={'color': 'rgba(255,127,14,1)'}, name='three_month_avg')])
 
 # %%

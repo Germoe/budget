@@ -33,32 +33,39 @@ def read_transaction_data(source, base_path='../data/transactions/', return_name
         return latest_df, latest_historic_file
     return latest_df
 
-def add_categories(df, src_col='label', trgt_col='cat', return_cats=False):
-    cats = {
+# +
+def get_categories():
+    return {
         'income': ['income'],
         'shopping': ['fashion','shopping'],
         'groceries': ['groceries'],
         'home': ['home','rent', 'utilities','electricity','heat','water','gas','gez','cell','dsl','internet','insurance'],
-        'subscription': ['subscription','amazon prime','apple','prime','medium','medium subscription','patreon','spotify','skype'],
-        'work': ['work','office','aws','google storage','domain','class','classes'],
+        'subscription': ['subscription','amazon prime','apple','prime','medium','medium subscription','patreon','spotify','skype','google','nintendo'],
+        'work': ['work','office','aws','google storage','domain','class','classes','google domains'],
         'debt': ['debt','kfw','bildungsfond'],
-        'travel': ['travel','lodging','vacation rental','flight','car rental'],
+        'travel': ['travel','lodging','vacation rental','flight','car rental','hotel'],
         'transport': ['transport','bvg','swapfiets','parking','toll'],
         'savings': ['savings','crypto'],
         'fitness': ['fitness','fitx','gym'],
-        'fun': ['fun','drinks','drink','concert','food','lunch','coffee','breakfast','movies'],
-        'health+beauty': ['hair','pharmacy','drugstore','doctor'],
+        'fun': ['fun','drinks','brunch','drink','concert','food','lunch','dinner','coffee','cafe','breakfast','movies','movie','chocolate'],
+        'health+beauty': ['hair','pharmacy','drugstore','doctor','hair-removal','spa','eyes'],
         'gift': ['gift'],
         'other': ['other','fee','feee','cash','haircut'],
         'transfer': ['transfer','refund'],
         'ignore': ['ignore','none']
     }
 
+def add_categories(df, src_col='label', trgt_col='cat', return_cats=False):
+    cats = get_categories()
+
     categories = {val: key for key, vals in cats.items() for val in vals}
     df[trgt_col] = df[src_col].str.lower().map(categories)
     if return_cats == True:
         return df, cats
     return df
+
+
+# -
 
 def print_file(path, show=10):
     with open(path, "r", encoding='utf-8', errors="ignore") as file:
