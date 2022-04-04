@@ -145,6 +145,9 @@ fig.add_traces([go.Scatter(x=roll_avg.index,y=roll_avg['totalmean'], line={'colo
                 go.Scatter(x=roll_avg.index,y=roll_avg['rolling_mean_mean'], line={'color': 'rgba(255,127,14,1)'}, name='mvg_28')])
 
 # %%
+df_raw['cat'].unique()
+
+# %%
 df_expenses = df_raw.loc[~df_raw['cat'].isin(['income','transfer','ignore']),:]
 
 # %%
@@ -154,16 +157,14 @@ end = df_expenses.transaction_date.max()
 time_index = pd.date_range(start=start, end=end)
 roll_avg = roll_avg.reindex(time_index).reset_index()
 roll_avg = roll_avg.groupby('index').sum()
+roll_avg['daily'] = roll_avg[('amount','sum')].rolling(window=1).sum()
 roll_avg['weekly_avg'] = roll_avg[('amount','sum')].rolling(window=7).sum()
-roll_avg['monthly_avg'] = roll_avg[('amount','sum')].rolling(window=28).sum()
-roll_avg['three_month_avg'] = roll_avg[('amount','sum')].rolling(window=84).sum() / 3
+roll_avg['monthly_avg'] = roll_avg[('amount','sum')].rolling(window=28).sum() / 4 
+roll_avg['three_month_avg'] = roll_avg[('amount','sum')].rolling(window=84).sum() / 3 / 4
 roll_avg.columns = [f'{i}{j}' for i, j in roll_avg.columns]
 
 fig = go.Figure()
-fig.add_traces([go.Scatter(x=roll_avg.index,y=roll_avg['weekly_avg'], line={'color': 'rgba(148,103,189,1)'}, name='weekly_avg'),
+fig.add_traces([go.Scatter(x=roll_avg.index,y=roll_avg['daily'], line={'color': 'rgba(227,119,194,1)'}, name='daily'),
+               go.Scatter(x=roll_avg.index,y=roll_avg['weekly_avg'], line={'color': 'rgba(148,103,189,1)'}, name='weekly_avg'),
                go.Scatter(x=roll_avg.index,y=roll_avg['monthly_avg'], line={'color': 'rgba(31,119,180,1)'}, name='monthly_avg'),
                go.Scatter(x=roll_avg.index,y=roll_avg['three_month_avg'], line={'color': 'rgba(255,127,14,1)'}, name='three_month_avg')])
-
-# %%
-
-# %%
