@@ -6,7 +6,7 @@ import pandas as pd
 from ipywidgets import interact, widgets
 import datetime
 from budget.functions import add_categories, get_categories, read_transaction_data
-from budget.budget import Budget
+from budget.budget import Budget, Transaction
 
 import plotly.graph_objects as go
 
@@ -54,7 +54,7 @@ budget_last_month_cat = budget# budget.loc[budget['budget_month'] == last_month_
 
 # Actuals
 names = ['bofa-sebastian','bofa-brett','barclays','dkb-credit','dkb','n26-sebastian','n26-brett','capital-one']
-df_raw = pd.concat([read_transaction_data(name) for name in names]).set_index('transaction_date')
+df_raw = pd.concat([Transaction(name).transactions for name in names]).set_index('transaction_date')
 df_raw = df_raw.loc[df_raw.index >= '2021-09-01',:]
 df_raw = add_categories(df_raw)
 
@@ -118,12 +118,12 @@ last_month_total.sum()
 
 
 # %%
+df_raw.loc[df_raw.index == '2022-03-31']
+
+# %%
 df_raw = df_raw.reset_index()
 last_transact_date = df_raw.groupby('source').max()['transaction_date'].reset_index()
 last_transact_cond = df_raw[['source','transaction_date']].apply(tuple, axis=1).isin(last_transact_date.apply(tuple, axis=1))
-
-# %%
-df_raw.groupby(['transaction_date','source']).sum()
 
 # %%
 total_source_df = df_raw.loc[(last_transact_cond)]
@@ -137,16 +137,10 @@ end = df_raw.transaction_date.max()
 time_index = pd.date_range(start=start, end=end)
 roll_avg = pd.concat([roll_avg.loc[(source, slice(None)),:].reset_index().set_index('transaction_date').reindex(time_index, method='ffill') for source in df_raw['source'].unique()]).reset_index()
 roll_avg = roll_avg.groupby('index').sum()
-roll_avg['rolling_mean_max'] = roll_avg[('total','amax')].rolling(window=28).mean()
-roll_avg['rolling_mean_min'] = roll_avg[('total','amin')].rolling(window=28).mean()
 roll_avg['rolling_mean_mean'] = roll_avg[('total','mean')].rolling(window=28).mean()
 roll_avg.columns = [f'{i}{j}' for i, j in roll_avg.columns]
 
 fig = go.Figure()
-fig.add_traces([go.Scatter(x=roll_avg.index,y=roll_avg['totalamax'], line={'color': 'rgba(0,0,0,0)'}, showlegend=False),
-                go.Scatter(x=roll_avg.index,y=roll_avg['totalamin'], mode='none', fillcolor='rgba(31,119,180,.2)', fill='tonexty', name='min-to-max-daily_avg')])
-fig.add_traces([go.Scatter(x=roll_avg.index,y=roll_avg['rolling_mean_max'], line={'color': 'rgba(0,0,0,0)'}, showlegend=False),
-                go.Scatter(x=roll_avg.index,y=roll_avg['rolling_mean_min'], mode='none', fillcolor='rgba(255,127,14,.2)', fill='tonexty', name='min-to-max-mvg_28')])
 fig.add_traces([go.Scatter(x=roll_avg.index,y=roll_avg['totalmean'], line={'color': 'rgba(31,119,180,1)'}, name='daily_avg'),
                 go.Scatter(x=roll_avg.index,y=roll_avg['rolling_mean_mean'], line={'color': 'rgba(255,127,14,1)'}, name='mvg_28')])
 
@@ -169,5 +163,7 @@ fig = go.Figure()
 fig.add_traces([go.Scatter(x=roll_avg.index,y=roll_avg['weekly_avg'], line={'color': 'rgba(148,103,189,1)'}, name='weekly_avg'),
                go.Scatter(x=roll_avg.index,y=roll_avg['monthly_avg'], line={'color': 'rgba(31,119,180,1)'}, name='monthly_avg'),
                go.Scatter(x=roll_avg.index,y=roll_avg['three_month_avg'], line={'color': 'rgba(255,127,14,1)'}, name='three_month_avg')])
+
+# %%
 
 # %%
