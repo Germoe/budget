@@ -21,4 +21,6 @@ budget = Budget(path='../data/budget/budget_new.csv')
 budget.budget
 
 # %%
-budget.update_budget('income')
+budget.update_budget('debt')
+
+# %%

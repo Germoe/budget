@@ -38,19 +38,19 @@ def get_categories():
     return {
         'income': ['income'],
         'shopping': ['fashion','shopping'],
-        'groceries': ['groceries'],
+        'groceries': ['groceries','groceris'],
         'home': ['home','rent', 'utilities','electricity','heat','water','gas','gez','cell','dsl','internet','insurance'],
         'subscription': ['subscription','amazon prime','apple','prime','medium','medium subscription','patreon','spotify','skype','google','nintendo'],
         'work': ['work','office','aws','google storage','domain','class','classes','google domains'],
         'debt': ['debt','kfw','bildungsfond'],
         'travel': ['travel','lodging','vacation rental','flight','car rental','hotel'],
-        'transport': ['transport','bvg','swapfiets','parking','toll'],
-        'savings': ['savings','crypto'],
+        'transport': ['transport','bvg','swapfiets','parking','toll','taxi','fuel'],
+        'savings': ['savings','crypto','investment'],
         'fitness': ['fitness','fitx','gym'],
         'fun': ['fun','drinks','brunch','drink','concert','food','lunch','dinner','coffee','cafe','breakfast','movies','movie','chocolate'],
-        'health+beauty': ['hair','pharmacy','drugstore','doctor','hair-removal','spa','eyes'],
+        'health+beauty': ['hair','pharmacy','drugstore','doctor','hair-removal','spa','eyes','glasses','health','massage','dentist','dentists','haircut'],
         'gift': ['gift'],
-        'other': ['other','fee','feee','cash','haircut'],
+        'other': ['other','fee','feee','cash','taxes','donation','tax'],
         'transfer': ['transfer','refund'],
         'ignore': ['ignore','none']
     }
@@ -75,62 +75,8 @@ def print_file(path, show=10):
                 break
             print(i + 1, line)
 
-def combine_debit_credit(df, amount_map, mapping):
-    plus_vals = df.loc[~df[amount_map['+']].isna(),[mapping['transaction_date'], mapping['description']]]
-    minus_vals = df.loc[~df[amount_map['-']].isna(),[mapping['transaction_date'], mapping['description']]]
-    df[amount_map['-']] = -df[amount_map['-']]
-    if len(plus_vals.index.intersection(minus_vals.index)) == 0:
-        df['amount'] = df[amount_map['+']].combine_first(df[amount_map['-']])
-    return df
 
-def prepare_data(df, mapping, dayfirst, currency, name, cent_delimiter, at_total=None):
-    use_cols = [col for col in mapping.values()]
-    use_names = [name for name in mapping.keys()]
-    
-    df_cln = df.loc[:,use_cols]
-    df_cln.columns = use_names    
 
-    # Define mandatory cols
-    mandatory_cols = ['transaction_date','beneficiary','amount','description']
-    for man_col in mandatory_cols:
-        if man_col not in df_cln.columns:
-            df_cln[man_col] = ''
-    
-    # Add Known Information
-    df_cln['currency'] = currency
-    df_cln['name'] = name
-
-    # Date Column
-    df_cln['transaction_date'] = pd.to_datetime(df_cln['transaction_date'], dayfirst=dayfirst)
-            
-    # Sort Values
-    df_cln = df_cln.sort_values('transaction_date', ascending=False)
-
-    # Value Column
-    if df_cln['amount'].dtype == 'O':
-        df_cln['amount'] = df_cln['amount'].str.extract(r'((\d|\.|,|-)+)')[0]
-        if cent_delimiter == ',':
-            df_cln['amount'] = pd.to_numeric(df_cln['amount'].str.replace('.','').str.replace(',','.'), downcast='float')
-        else:
-            df_cln['amount'] = pd.to_numeric(df_cln['amount'].str.replace(',',''), downcast='float')
-
-    # Fill NaN Values 
-    df_cln['description'] = df_cln['description'].fillna('other')
-    
-    # Add total_at
-    if at_total is not None:
-        # Calculate Beginning Balance
-        if (df_cln['transaction_date'] > at_total[0]).sum() > 0:
-            end_bal = df_cln.loc[df_cln['transaction_date'] > at_total[0],['transaction_date','amount']].sort_values('transaction_date', ascending=True)
-            end_bal['total'] = at_total[1] + end_bal['amount'].shift(0).cumsum()
-            end_bal = end_bal.iat[-1, 2]
-        else:
-            end_bal = at_total[1]
-        
-        df_cln['total'] = end_bal - df_cln['amount'].shift(1).cumsum()
-        df_cln['total'].iat[0] = end_bal
-
-    return df_cln
 
 
 # Classifier

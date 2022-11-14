@@ -1,107 +1,13 @@
 # -*- coding: utf-8 -*-
-from budget.budget import Budget
-from budget.functions import combine_debit_credit, prepare_data, add_fx_rate
-
-budget = Budget('../data/budget/budget_new.csv')
-budget.budget
-
 # +
 import pandas as pd
 
-bank_configs = {
-    'dkb': {
-        'format': 'csv',
-        'skiprows': 6,
-        'delimiter': ';',
-        'currency': 'EUR',
-        'cent_delimiter': ',',
-        'dayfirst': True,
-        'drop_rows': 0,
-        'mapping': {
-            'transaction_date': 'Buchungstag',
-            'beneficiary': 'Auftraggeber / Begünstigter',
-            'amount': 'Betrag (EUR)',
-            'description': 'Verwendungszweck'
-        }
-    },
-    'dkb-credit': {
-        'format': 'csv',
-        'skiprows': 6,
-        'delimiter': ';',
-        'currency': 'EUR',
-        'cent_delimiter': ',',
-        'dayfirst': True,
-        'drop_rows': 0,
-        'mapping': {
-            'transaction_date': 'Belegdatum',
-            'amount': 'Betrag (EUR)',
-            'description': 'Beschreibung'
-        }
-    },
-    'n26': {
-        'format': 'csv',
-        'skiprows': 0,
-        'delimiter': ',',
-        'currency': 'EUR',
-        'cent_delimiter': '.',
-        'dayfirst': False,
-        'drop_rows': 0,
-        'mapping': {
-            'transaction_date': 'Date',
-            'beneficiary': 'Payee',
-            'amount': 'Amount (EUR)',
-            'description': 'Payment reference'
-        }
-    },
-    'bofa': {
-        'format': 'csv',
-        'skiprows': 6,
-        'delimiter': ',',
-        'currency': 'USD',
-        'cent_delimiter': '.',
-        'dayfirst': False,
-        'drop_rows': 0,
-        'mapping': {
-            'transaction_date': 'Date',
-            'amount': 'Amount',
-            'description': 'Description'
-        }
-    },
-    'barclays': {
-        'format': 'xlsx',
-        'sheetname': 0,
-        'skiprows': 12,
-        'currency': 'EUR',
-        'cent_delimiter': ',',
-        'dayfirst': True,
-        'drop_rows': 0,
-        'mapping': {
-            'transaction_date': 'Buchungsdatum',
-            'amount': 'Betrag',
-            'description': 'Beschreibung'
-        }
-    },
-    'capital-one': {
-        'format': 'csv',
-        'skiprows': 0,
-        'delimiter': ',',
-        'currency': 'USD',
-        'cent_delimiter': '.',
-        'dayfirst': False,
-        'drop_rows': 0,
-        'mapping': {
-            'transaction_date': 'Transaction Date',
-            'amount': 'amount',
-            'description': 'Description'
-        },
-        'amount_map': {
-            '+': 'Credit',
-            '-': 'Debit'
-        }
-    }
-}
+from budget.budget import Budget, Transaction
+from budget.functions import add_fx_rate, label_data
+# -
 
-
+budget = Budget('../data/budget/budget_new.csv')
+budget.budget
 
 # +
 dkb_path = "../data/raw/dkb.csv"
@@ -201,6 +107,14 @@ at_total=capital_one_at_total,
 config=capital_one_config)
 transactions.update_total(capital_one_at_total)
 
-
+# label_data('bofa-sebastian')
+# label_data('bofa-brett')
+# label_data('barclays')
+# label_data('dkb-credit')
+# label_data('dkb')
+# label_data('n26-sebastian')
+label_data('n26-brett')
+# label_data('postbank')
+# label_data('capital-one')
 
 

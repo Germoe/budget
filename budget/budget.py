@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import numpy as np
 import pandas as pd
@@ -44,7 +45,7 @@ class Budget():
         return pd.DataFrame(budget_dict)
             
     def update_budget(self, key):
-        self.budget['budget_amount'][key] = -int(input(f'Amount: '))
+        self.budget.at[key,'budget_amount'] = -int(input(f'Amount: '))
         self.budget.to_csv(self.path)
         
 class Transaction():
@@ -68,7 +69,7 @@ class Transaction():
             print(f'Reading in from: {name}')
             self.transactions = self.read_transaction_data(name)
             
-    def read_transaction_data(self):
+    def read_transaction_data(self, source=None):
         source = self.source
         historic_files = glob.glob(self.base_path + f'{source}-20*.csv')
 
@@ -179,3 +180,157 @@ class Transaction():
         self.transactions = df_cln
         self.transactions.to_csv(self.base_path + f'{self.source}-{upload_datetime}.csv', index=False)
 
+
+# -
+
+bank_configs = {
+    'dkb': {
+        'format': 'csv',
+        'skiprows': 6,
+        'delimiter': ';',
+        'currency': 'EUR',
+        'cent_delimiter': ',',
+        'dayfirst': True,
+        'drop_rows': 0,
+        'mapping': {
+            'transaction_date': 'Buchungstag',
+            'beneficiary': 'Auftraggeber / Begünstigter',
+            'amount': 'Betrag (EUR)',
+            'description': 'Verwendungszweck'
+        }
+    },
+    'dkb-credit': {
+        'format': 'csv',
+        'skiprows': 6,
+        'delimiter': ';',
+        'currency': 'EUR',
+        'cent_delimiter': ',',
+        'dayfirst': True,
+        'drop_rows': 0,
+        'mapping': {
+            'transaction_date': 'Belegdatum',
+            'amount': 'Betrag (EUR)',
+            'description': 'Beschreibung'
+        }
+    },
+    'n26': {
+        'format': 'csv',
+        'skiprows': 0,
+        'delimiter': ',',
+        'currency': 'EUR',
+        'cent_delimiter': '.',
+        'dayfirst': False,
+        'drop_rows': 0,
+        'mapping': {
+            'transaction_date': 'Date',
+            'beneficiary': 'Payee',
+            'amount': 'Amount (EUR)',
+            'description': 'Payment reference'
+        }
+    },
+    'bofa': {
+        'format': 'csv',
+        'skiprows': 6,
+        'delimiter': ',',
+        'currency': 'USD',
+        'cent_delimiter': '.',
+        'dayfirst': False,
+        'drop_rows': 0,
+        'mapping': {
+            'transaction_date': 'Date',
+            'amount': 'Amount',
+            'description': 'Description'
+        }
+    },
+    'barclays': {
+        'format': 'xlsx',
+        'sheetname': 0,
+        'skiprows': 12,
+        'currency': 'EUR',
+        'cent_delimiter': ',',
+        'dayfirst': True,
+        'drop_rows': 0,
+        'mapping': {
+            'transaction_date': 'Buchungsdatum',
+            'amount': 'Betrag',
+            'description': 'Beschreibung'
+        }
+    },
+    'capital-one': {
+        'format': 'csv',
+        'skiprows': 0,
+        'delimiter': ',',
+        'currency': 'USD',
+        'cent_delimiter': '.',
+        'dayfirst': False,
+        'drop_rows': 0,
+        'mapping': {
+            'transaction_date': 'Transaction Date',
+            'amount': 'amount',
+            'description': 'Description'
+        },
+        'amount_map': {
+            '+': 'Credit',
+            '-': 'Debit'
+        }
+    }
+}
+
+
+# +
+def prepare_data(df, mapping, dayfirst, currency, name, cent_delimiter, at_total=None):
+    use_cols = [col for col in mapping.values()]
+    use_names = [name for name in mapping.keys()]
+    
+    df_cln = df.loc[:,use_cols]
+    df_cln.columns = use_names    
+
+    # Define mandatory cols
+    mandatory_cols = ['transaction_date','beneficiary','amount','description']
+    for man_col in mandatory_cols:
+        if man_col not in df_cln.columns:
+            df_cln[man_col] = ''
+    
+    # Add Known Information
+    df_cln['currency'] = currency
+    df_cln['name'] = name
+
+    # Date Column
+    df_cln['transaction_date'] = pd.to_datetime(df_cln['transaction_date'], dayfirst=dayfirst)
+            
+    # Sort Values
+    df_cln = df_cln.sort_values('transaction_date', ascending=False)
+
+    # Value Column
+    if df_cln['amount'].dtype == 'O':
+        df_cln['amount'] = df_cln['amount'].str.extract(r'((\d|\.|,|-)+)')[0]
+        if cent_delimiter == ',':
+            df_cln['amount'] = pd.to_numeric(df_cln['amount'].str.replace('.','').str.replace(',','.'), downcast='float')
+        else:
+            df_cln['amount'] = pd.to_numeric(df_cln['amount'].str.replace(',',''), downcast='float')
+
+    # Fill NaN Values 
+    df_cln['description'] = df_cln['description'].fillna('other')
+    
+    # Add total_at
+    if at_total is not None:
+        # Calculate Beginning Balance
+        if (df_cln['transaction_date'] > at_total[0]).sum() > 0:
+            end_bal = df_cln.loc[df_cln['transaction_date'] > at_total[0],['transaction_date','amount']].sort_values('transaction_date', ascending=True)
+            end_bal['total'] = at_total[1] + end_bal['amount'].shift(0).cumsum()
+            end_bal = end_bal.iat[-1, 2]
+        else:
+            end_bal = at_total[1]
+        
+        df_cln['total'] = end_bal - df_cln['amount'].shift(1).cumsum()
+        df_cln['total'].iat[0] = end_bal
+
+    return df_cln
+
+def combine_debit_credit(df, amount_map, mapping):
+    plus_vals = df.loc[~df[amount_map['+']].isna(),[mapping['transaction_date'], mapping['description']]]
+    minus_vals = df.loc[~df[amount_map['-']].isna(),[mapping['transaction_date'], mapping['description']]]
+    df[amount_map['-']] = -df[amount_map['-']]
+    if len(plus_vals.index.intersection(minus_vals.index)) == 0:
+        df['amount'] = df[amount_map['+']].combine_first(df[amount_map['-']])
+    return df
