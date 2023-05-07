@@ -77,6 +77,7 @@ class Transaction():
 
         historic_files_max_idx = np.argmax([ re.search(r'(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})',f).group() for f in historic_files])
         self.latest_historic_file = historic_files[historic_files_max_idx]
+        print(f'Reading in from: {self.latest_historic_file}')
         latest_df = pd.read_csv(self.latest_historic_file, parse_dates=['transaction_date'], dtype={
                                 'amount':np.float32,
                                 'description': object,
@@ -95,7 +96,7 @@ class Transaction():
     
     def calc_total(self, df):
         df_daily_total = df.groupby(['transaction_date'], as_index=False).agg({'amount': np.sum}).sort_values(['transaction_date'], ascending=False)
-        ref_bal = df[['ref_bal','ref_bal_date']].drop_duplicates()
+        ref_bal = df[['ref_bal','ref_bal_date']].drop_duplicates().dropna()
         end_bal = df_daily_total.loc[df_daily_total['transaction_date'] > ref_bal['ref_bal_date'].values[0],'amount'].sum() + ref_bal['ref_bal']
         df_daily_total.loc[:,'total'] = end_bal.values[0]
         df_daily_total.loc[:,'total'] = (df_daily_total.loc[:,'total'] - df_daily_total['amount'].shift(1).cumsum()).fillna(end_bal.values[0])

@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 # %%
+# Add local module to path
+import os
+import sys
+module_path = os.path.abspath(os.path.join('..'))
+if module_path not in sys.path:
+    sys.path.append(module_path)
+
+# %%
 from budget.functions import add_transaction_data, read_transaction_data, label_data
 
 # %%
@@ -21,8 +29,8 @@ from budget.functions import add_transaction_data, read_transaction_data, label_
 # label_data('barclays')
 # label_data('dkb-credit')
 # label_data('dkb')
-# label_data('n26-sebastian')
-# label_data('n26-brett')
+label_data('n26-sebastian')
+label_data('n26-brett')
 # label_data('postbank')
 # label_data('capital-one')
 

@@ -259,13 +259,12 @@ def label_data(source):
             guess = bc.classifier.classify(input_text)
         
             # Print list of categories
-            print(chr(27) + "[2J")
             print("\n\n")
             # Print classification
             print(f"Is it: {guess}")
             print(f"Based on: {extracted}")
             # Print transaction
-            print("On: %s\t %.2f\n%s\n%s" % (row['transaction_date'], row['amount'], row['description'], row['beneficiary']))
+            print("On: %s\t %.2f\n%s" % (row['transaction_date'], row['amount'], row['description']))
 
             input_value = input("> ")
             
